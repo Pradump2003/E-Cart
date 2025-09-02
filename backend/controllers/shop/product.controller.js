@@ -20,7 +20,12 @@ const ApiResponse = require("../../utils/ApiResponse.utils");
 // });
 
 const getFilteredProducts = expressAsyncHandler(async (req, res) => {
-  let { category = "", brand = "", sortBy = "price-lowToHigh" } = req.query;
+  let {
+    category = "",
+    brand = "",
+    sortBy = "price-lowToHigh",
+    search = "",
+  } = req.query;
   let filters = {};
 
   // Normalize query inputs
@@ -29,22 +34,28 @@ const getFilteredProducts = expressAsyncHandler(async (req, res) => {
     : [];
   const brandArray = brand ? brand.split(",").map((b) => b.toLowerCase()) : [];
 
-  if (categoryArray.length) {
-    filters.category = { $in: categoryArray };
-  }
-  if (brandArray.length) {
-    filters.brand = { $in: brandArray };
+  if (categoryArray.length) filters.category = { $in: categoryArray };
+  if (brandArray.length) filters.brand = { $in: brandArray };
+
+  // ✅ Add search filter (title or description)
+  if (search) {
+    filters.$or = [
+      { title: { $regex: search, $options: "i" } },
+      // { description: { $regex: search, $options: "i" } },
+      { brand: { $regex: search, $options: "i" } },
+      { category: { $regex: search, $options: "i" } },
+    ];
   }
 
+  // Sorting
   let sort = {};
   if (sortBy === "price-lowToHigh") sort.salePrice = 1;
   else if (sortBy === "price-highToLow") sort.salePrice = -1;
   else if (sortBy === "title-aToZ") sort.title = 1;
   else if (sortBy === "title-zToA") sort.title = -1;
-  else sort.price = 1;
+  else sort.salePrice = 1; // default
 
-  // Make sure categories/brands are stored in lowercase in DB
-  let products = await productCollection.find(filters).sort(sort);
+  const products = await productCollection.find(filters).sort(sort);
 
   new ApiResponse(true, "Products fetched successfully", products, 200).send(
     res

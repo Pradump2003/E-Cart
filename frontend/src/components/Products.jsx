@@ -4,16 +4,17 @@ import Divider from "@mui/material/Divider";
 import ProductCard from "./ProductCard";
 import { useSearchParams } from "react-router-dom";
 import { Listbox } from "@headlessui/react";
-import { FiChevronDown } from "react-icons/fi"; // arrow icon
+import { FiChevronDown } from "react-icons/fi";
 
 const ProductList = () => {
   const [searchParams] = useSearchParams();
 
   const categoryFromUrl = searchParams.get("category");
   const brandFromUrl = searchParams.get("brand");
+  const searchFromUrl = searchParams.get("search"); // ✅ from query string
 
   const [products, setProducts] = useState([]);
-  const [sortBy, setSortBy] = useState("");
+  const [sortBy, setSortBy] = useState("price-lowToHigh"); // ✅ default
   const [loading, setLoading] = useState(false);
   const [selectedBrand, setSelectedBrand] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState([]);
@@ -37,9 +38,8 @@ const ProductList = () => {
   };
 
   const sortOptions = [
-    { value: "", label: "Show All" },
-    { value: "price-highToLow", label: "Price: High to Low" },
     { value: "price-lowToHigh", label: "Price: Low to High" },
+    { value: "price-highToLow", label: "Price: High to Low" },
     { value: "title-aToZ", label: "Title: A → Z" },
     { value: "title-zToA", label: "Title: Z → A" },
   ];
@@ -55,32 +55,20 @@ const ProductList = () => {
           ...(selectedCategory.length > 0 && {
             category: selectedCategory.join(","),
           }),
+          ...(searchFromUrl && { search: searchFromUrl }),
         },
       });
 
-      let filteredProducts = res.data.data;
-
-      if (selectedBrand.length > 0 || selectedCategory.length > 0) {
-        filteredProducts = res.data.data.filter((p) => {
-          const brandMatch =
-            selectedBrand.length === 0 || selectedBrand.includes(p.brand);
-          const categoryMatch =
-            selectedCategory.length === 0 ||
-            selectedCategory.includes(p.category);
-
-          return brandMatch && categoryMatch;
-        });
-      }
-
-      setProducts(filteredProducts);
+      setProducts(res.data?.data || []); // ✅ safe access
     } catch (err) {
-      console.error("Error fetching products:", err);
+      console.error("❌ Error fetching products:", err);
+      setProducts([]);
     } finally {
       setLoading(false);
     }
   };
 
-  // ✅ Sync filters with URL query
+  // ✅ Sync filters with URL
   useEffect(() => {
     if (categoryFromUrl) setSelectedCategory([categoryFromUrl]);
     if (brandFromUrl) setSelectedBrand([brandFromUrl]);
@@ -88,7 +76,7 @@ const ProductList = () => {
 
   useEffect(() => {
     fetchProducts();
-  }, [sortBy, selectedBrand, selectedCategory]);
+  }, [sortBy, selectedBrand, selectedCategory, searchFromUrl]);
 
   return (
     <div className="pt-[70px]">
@@ -102,12 +90,12 @@ const ProductList = () => {
 
           {/* Categories */}
           <section className="p-5">
-            <h1 className="text-2xl font-bold">Category</h1>
+            <h1 className="text-xl font-semibold">Category</h1>
             <ul className="py-4 select-none">
               {sidebarFilter.category.map((ele) => (
                 <li
                   key={ele.id}
-                  className="flex items-center font-semibold text-lg gap-2"
+                  className="flex items-center font-medium text-md gap-2"
                 >
                   <input
                     type="checkbox"
@@ -131,12 +119,12 @@ const ProductList = () => {
 
           {/* Brands */}
           <section className="p-5">
-            <h1 className="text-2xl font-bold">Brands</h1>
+            <h1 className="text-xl font-semibold">Brands</h1>
             <ul className="py-4 select-none">
               {sidebarFilter.brand.map((ele) => (
                 <li
                   key={ele.id}
-                  className="flex items-center font-semibold text-lg gap-2"
+                  className="flex items-center font-medium text-md gap-2"
                 >
                   <input
                     type="checkbox"
@@ -165,12 +153,11 @@ const ProductList = () => {
             <div className="flex gap-4 items-center">
               <span>{`${products.length} Products`}</span>
 
-              {/* ✅ Custom Dropdown with Headless UI */}
+              {/* Sort dropdown */}
               <div className="relative w-56">
                 <Listbox value={sortBy} onChange={setSortBy}>
                   <Listbox.Button className="w-full flex justify-between items-center p-2 shadow-md rounded-lg bg-white text-black border cursor-pointer">
-                    {sortOptions.find((opt) => opt.value === sortBy)?.label ||
-                      "Show All"}
+                    {sortOptions.find((opt) => opt.value === sortBy)?.label}
                     <FiChevronDown className="ml-2 text-gray-500" />
                   </Listbox.Button>
 
@@ -204,8 +191,8 @@ const ProductList = () => {
             </div>
           ) : (
             <article className="p-5 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 justify-items-center">
-              {products.map((product, idx) => (
-                <ProductCard key={idx} product={product} />
+              {products.map((product) => (
+                <ProductCard key={product.id} product={product} />
               ))}
             </article>
           )}

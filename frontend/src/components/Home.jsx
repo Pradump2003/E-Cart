@@ -158,7 +158,7 @@ const Home = () => {
               <ProductCard key={idx} product={product} />
             ))
           ) : (
-            <P>No Products Found</P>
+            <p>No Products Found</p>
           )}
         </article>
       </section>
